@@ -1,0 +1,39 @@
+name: Publier avec signature
+on:
+  workflow_run:
+    workflows: [Publier Mon Frigo]
+    types: [completed]
+    branches: [main]
+  workflow_dispatch:
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+concurrency:
+  group: pages-signature
+  cancel-in-progress: true
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - uses: actions/checkout@v4
+      - name: Ajouter la signature en haut de la page
+        run: |
+          mkdir _site
+          python - <<'PY'
+          from pathlib import Path
+          html = Path('index.html').read_text()
+          signature = '<p aria-label="Signature" style="margin:0 0 18px;font-family:Georgia,serif;font-size:1.5rem;font-style:italic;letter-spacing:.04em">Atahias. S</p>'
+          html = html.replace('<body><header>', '<body><header>' + signature, 1)
+          Path('_site/index.html').write_text(html)
+          PY
+      - uses: actions/configure-pages@v5
+      - uses: actions/upload-pages-artifact@v3
+        with:
+          path: _site
+      - name: Déployer
+        id: deployment
+        uses: actions/deploy-pages@v4
